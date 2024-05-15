@@ -110,14 +110,34 @@ function updatePost(res, id, body) {
   }
 }
 
+// function deletePost(res, id) {
+//     const postIndex = posts.findIndex((post) => post.id === (id));
+//     if (postIndex === -1) {
+//       res.writeHead(404, { "Content-Type": "application/json" });
+//       res.end(JSON.stringify({ message: "Post not found" }));
+//       console.log("Post not found");
+//     } else {
+//       posts.splice(postIndex, 1);
+//       fs.writeFile(filePath, JSON.stringify(posts), (err) => {
+//         if (err) {
+//           res.writeHead(500, { "Content-Type": "application/json" });
+//           res.end(JSON.stringify({ message: "Internal server error" }));
+//           console.error("Error deleting post:", err);
+//         } else {
+//           res.writeHead(200, { "Content-Type": "application/json" });
+//           res.end(JSON.stringify({ message: "Post deleted successfully" }));
+//           console.log("Post deleted");
+//         }
+//       });
+//     }
+//   }
+
+
 function deletePost(res, id) {
-    const postIndex = posts.findIndex((post) => post.id === Number(id));
-    if (postIndex === -1) {
-      res.writeHead(404, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ message: "Post not found" }));
-      console.log("Post not found");
-    } else {
-      posts.splice(postIndex, 1);
+  try {
+    const postIndex = posts.findIndex(post => post.id === id);
+    if (postIndex !== -1) {
+      const deletedPost = posts.splice(postIndex, 1)[0];
       fs.writeFile(filePath, JSON.stringify(posts), (err) => {
         if (err) {
           res.writeHead(500, { "Content-Type": "application/json" });
@@ -125,13 +145,22 @@ function deletePost(res, id) {
           console.error("Error deleting post:", err);
         } else {
           res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ message: "Post deleted successfully" }));
+          res.end(JSON.stringify({ message: "Post deleted successfully", post: deletedPost }));
           console.log("Post deleted");
         }
       });
+    } else {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ message: "Post not found" }));
+      console.log("Post not found");
     }
+  } catch (err) {
+    console.error('Error deleting post:', err);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ message: "Internal server error" }));
   }
-  
+}
+
   
 
 // Create the server
