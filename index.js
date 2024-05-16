@@ -66,34 +66,53 @@ function getPostById(res, id) {
   }
 }
 
+
+
 function createPost(req, res) {
-    let bodyChunks = []; // Array to hold chunks of data
-    req.on('data', chunk => {
+  let bodyChunks = []; // Array to hold chunks of data
+  req.on('data', chunk => {
       bodyChunks.push(chunk); // Push each chunk into the array
-    });
-  
-    req.on('end', () => {
+  });
+
+  req.on('end', () => {
       const body = Buffer.concat(bodyChunks).toString(); // Join chunks into a string
       console.log(body);
-    //   console.table(body);
-  
+
       // At this point, `body` has the entire request body stored in it as a string
       const post = JSON.parse(body);
-      post.id = Date.now(); // Simple ID generation
-      posts.push(post);
       
+      // Check if the request body contains an ID
+      if (!post.hasOwnProperty('id')) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'ID is required for creating a new post' }));
+          return;
+      }
+      
+      // Check if the specified ID already exists
+      const idExists = posts.some(existingPost => existingPost.id === post.id);
+      if (idExists) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'ID must be unique' }));
+          return;
+      }
+
+      // If ID is valid and unique, add the post to the list
+      posts.push(post);
+
+      // Write the updated posts array to the JSON file
       fs.writeFile(filePath, JSON.stringify(posts), err => {
-        if (err) {
-          console.error(err); // Log the error instead of throwing it
-          res.status(500).send({ error: 'Failed to save post.' }); // Send a response indicating failure
-        } else {
-          res.writeHead(201, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(post)); // Respond with the created post
-        }
+          if (err) {
+              console.error(err);
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Failed to save post.' }));
+          } else {
+              res.writeHead(201, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(post)); // Respond with the created post
+          }
       });
-    });
+  });
 }
-  
+
 function updatePost(res, id, body) {
   const postIndex = posts.findIndex((post) => post.id === Number(id));
   if (postIndex === -1) {
@@ -110,34 +129,19 @@ function updatePost(res, id, body) {
   }
 }
 
-// function deletePost(res, id) {
-//     const postIndex = posts.findIndex((post) => post.id === (id));
-//     if (postIndex === -1) {
-//       res.writeHead(404, { "Content-Type": "application/json" });
-//       res.end(JSON.stringify({ message: "Post not found" }));
-//       console.log("Post not found");
-//     } else {
-//       posts.splice(postIndex, 1);
-//       fs.writeFile(filePath, JSON.stringify(posts), (err) => {
-//         if (err) {
-//           res.writeHead(500, { "Content-Type": "application/json" });
-//           res.end(JSON.stringify({ message: "Internal server error" }));
-//           console.error("Error deleting post:", err);
-//         } else {
-//           res.writeHead(200, { "Content-Type": "application/json" });
-//           res.end(JSON.stringify({ message: "Post deleted successfully" }));
-//           console.log("Post deleted");
-//         }
-//       });
-//     }
-//   }
 
 
 function deletePost(res, id) {
   try {
-    const postIndex = posts.findIndex(post => post.id === id);
+    console.log("Received delete request for post with ID:", id); // Debug log for received ID
+
+    const postIndex = posts.findIndex(post => post.id === Number(id));
+    console.log("Post index:", postIndex); // Debug log for post index
+
     if (postIndex !== -1) {
       const deletedPost = posts.splice(postIndex, 1)[0];
+      console.log("Deleted post:", deletedPost); // Debug log for deleted post
+
       fs.writeFile(filePath, JSON.stringify(posts), (err) => {
         if (err) {
           res.writeHead(500, { "Content-Type": "application/json" });
@@ -160,6 +164,7 @@ function deletePost(res, id) {
     res.end(JSON.stringify({ message: "Internal server error" }));
   }
 }
+
 
   
 
